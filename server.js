@@ -40,3 +40,65 @@ function validateLibroInput(req, res, next) {
   }
   next();
 }
+
+// ── RUTAS: Libros ────────────────────────────────────────────────────────────
+app.get('/api/v1/libros', (req, res) => {
+  const { disponible, page = 1, limit = 20 } = req.query;
+  let resultado = [...libros];
+  if (disponible !== undefined) {
+    resultado = resultado.filter(l => l.disponible === (disponible === 'true'));
+  }
+  const total = resultado.length;
+  const inicio = (Number(page) - 1) * Number(limit);
+  const data = resultado.slice(inicio, inicio + Number(limit));
+  res.status(200).json({
+    data,
+    meta: { total, page: Number(page), limit: Number(limit) }
+  });
+});
+
+app.post('/api/v1/libros', validateLibroInput, (req, res) => {
+  const { isbn, titulo, autorId, copias, fechaPublicacion, genero } = req.body;
+  const existe = libros.find(l => l.isbn === isbn);
+  if (existe) {
+    return res.status(409).json({
+      codigo: 'ISBN_DUPLICADO',
+      mensaje: `Ya existe un libro con el ISBN ${isbn}`
+    });
+  }
+  const nuevoLibro = { id: uuidv4(), isbn, titulo, autorId, disponible: true,
+                       copias, fechaPublicacion: fechaPublicacion || null,
+                       genero: genero || null };
+  libros.push(nuevoLibro);
+  res.status(201).json(nuevoLibro);
+});
+
+app.get('/api/v1/libros/:id', (req, res) => {
+  const libro = libros.find(l => l.id === req.params.id);
+if (!libro) return res.status(404).json({ codigo: 'NOT_FOUND',
+    mensaje: 'El libro solicitado no existe' });
+  res.status(200).json(libro);
+});
+
+app.put('/api/v1/libros/:id', validateLibroInput, (req, res) => {
+  const idx = libros.findIndex(l => l.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ codigo: 'NOT_FOUND',
+    mensaje: 'El libro solicitado no existe' });
+  libros[idx] = { ...libros[idx], ...req.body };
+  res.status(200).json(libros[idx]);
+});
+
+app.delete('/api/v1/libros/:id', (req, res) => {
+  const idx = libros.findIndex(l => l.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ codigo: 'NOT_FOUND',
+    mensaje: 'El libro solicitado no existe' });
+  const prestamosActivos = prestamos.filter(
+    p => p.libroId === req.params.id && p.estado === 'activo'
+  );
+  if (prestamosActivos.length > 0) {
+    return res.status(409).json({ codigo: 'PRESTAMOS_ACTIVOS',
+      mensaje: 'No se puede eliminar: el libro tiene préstamos activos' });
+  }
+  libros.splice(idx, 1);
+  res.status(204).send();
+});
