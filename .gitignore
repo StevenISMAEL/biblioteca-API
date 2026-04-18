@@ -1,0 +1,15 @@
+# Dependencias de Node (¡La regla más importante!)
+node_modules/
+
+# Archivos de variables de entorno (donde suelen ir contraseñas o puertos locales)
+.env
+
+# Archivos de registro de errores (Logs)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Archivos ocultos generados por el sistema operativo
+.DS_Store
+Thumbs.db
