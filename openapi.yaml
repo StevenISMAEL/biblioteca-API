@@ -1,0 +1,459 @@
+openapi: 3.0.3
+info:
+  title: Biblioteca UTN - API de Gestión de Inventarios
+  description: |
+    API REST para gestionar el inventario de una biblioteca universitaria.
+    Incluye gestión de libros, autores y préstamos.
+  version: 1.0.0
+  contact:
+    name: Equipo de Desarrollo UTN
+    email: dev@utn.edu.ec
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Servidor de desarrollo local
+
+tags:
+  - name: Libros
+    description: Operaciones sobre el recurso Libro
+  - name: Autores
+    description: Operaciones sobre el recurso Autor
+  - name: Prestamos
+    description: Operaciones sobre el recurso Préstamo
+
+paths:
+  /libros:
+    get:
+      tags: [Libros]
+      summary: Listar todos los libros
+      operationId: getLibros
+      parameters:
+        - name: disponible
+          in: query
+          schema:
+            type: boolean
+          description: Filtrar por disponibilidad
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Lista paginada de libros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LibroListResponse'
+              example:
+                data:
+                  - id: '1'
+                    isbn: '978-0-13-468599-1'
+                    titulo: 'Clean Code'
+                    autorId: '1'
+                    disponible: true
+                    copias: 3
+                meta:
+                  total: 50
+                  page: 1
+                  limit: 20
+    post:
+      tags: [Libros]
+      summary: Crear un nuevo libro
+      operationId: createLibro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LibroInput'
+      responses:
+        '201':
+          description: Libro creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Libro'
+        '400':
+          description: Datos de entrada inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflicto - ISBN ya registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /libros/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Libros]
+      summary: Obtener un libro por ID
+      operationId: getLibroById
+      responses:
+        '200':
+          description: Libro encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Libro'
+        '404':
+          description: Libro no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [Libros]
+      summary: Actualizar un libro
+      operationId: updateLibro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LibroInput'
+      responses:
+        '200':
+          description: Libro actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Libro'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Libros]
+      summary: Eliminar un libro
+      operationId: deleteLibro
+      responses:
+        '204':
+          description: Libro eliminado exitosamente
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: No se puede eliminar, tiene préstamos activos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /autores:
+    get:
+      tags: [Autores]
+      summary: Listar autores
+      operationId: getAutores
+      responses:
+        '200':
+          description: Lista de autores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Autor'
+    post:
+      tags: [Autores]
+      summary: Registrar un autor
+      operationId: createAutor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutorInput'
+      responses:
+        '201':
+          description: Autor creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Autor'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /autores/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Autores]
+      summary: Obtener autor por ID
+      operationId: getAutorById
+      responses:
+        '200':
+          description: Autor encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Autor'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /prestamos:
+    get:
+      tags: [Prestamos]
+      summary: Listar préstamos
+      operationId: getPrestamos
+      parameters:
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [activo, devuelto, vencido]
+      responses:
+        '200':
+          description: Lista de préstamos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Prestamo'
+    post:
+      tags: [Prestamos]
+      summary: Registrar un préstamo
+      operationId: createPrestamo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrestamoInput'
+      responses:
+        '201':
+          description: Préstamo registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prestamo'
+        '400':
+          description: Libro no disponible o datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /prestamos/{id}/devolver:
+    patch:
+      tags: [Prestamos]
+      summary: Registrar devolución de un préstamo
+      operationId: devolverPrestamo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Devolución registrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prestamo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: El préstamo ya fue devuelto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Libro:
+      type: object
+      required: [id, isbn, titulo, autorId, disponible, copias]
+      properties:
+        id:
+          type: string
+          example: '1'
+        isbn:
+          type: string
+          pattern: '^\d{3}-\d-\d{2}-\d{6}-\d$'
+          example: '978-0-13-468599-1'
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: 'Clean Code'
+        autorId:
+          type: string
+          example: '1'
+        disponible:
+          type: boolean
+          example: true
+        copias:
+          type: integer
+          minimum: 0
+          example: 3
+        fechaPublicacion:
+          type: string
+          format: date
+          example: '2008-08-01'
+        genero:
+          type: string
+          enum: [ficcion, no-ficcion, ciencia, tecnologia, historia, arte, otro]
+    LibroInput:
+      type: object
+      required: [isbn, titulo, autorId, copias]
+      properties:
+        isbn:
+          type: string
+          pattern: '^\d{3}-\d-\d{2}-\d{6}-\d$'
+        titulo:
+          type: string
+          minLength: 1
+          maxLength: 200
+        autorId:
+          type: string
+        copias:
+          type: integer
+          minimum: 1
+        fechaPublicacion:
+          type: string
+          format: date
+        genero:
+          type: string
+          enum: [ficcion, no-ficcion, ciencia, tecnologia, historia, arte, otro]
+    LibroListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Libro'
+        meta:
+          type: object
+          required: [total, page, limit]
+          properties:
+            total:
+              type: integer
+            page:
+              type: integer
+            limit:
+              type: integer
+    Autor:
+      type: object
+      required: [id, nombre, nacionalidad]
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: 'Robert C. Martin'
+        nacionalidad:
+          type: string
+          example: 'Estadounidense'
+        biografia:
+          type: string
+          maxLength: 1000
+        libros:
+          type: array
+          items:
+            type: string
+          description: IDs de los libros del autor
+    AutorInput:
+      type: object
+      required: [nombre, nacionalidad]
+      properties:
+        nombre:
+          type: string
+          minLength: 2
+          maxLength: 100
+        nacionalidad:
+          type: string
+        biografia:
+          type: string
+          maxLength: 1000
+    Prestamo:
+      type: object
+      required: [id, libroId, usuarioId, fechaPrestamo, fechaDevolucionEsperada, estado]
+      properties:
+        id:
+          type: string
+        libroId:
+          type: string
+        usuarioId:
+          type: string
+        fechaPrestamo:
+          type: string
+          format: date-time
+        fechaDevolucionEsperada:
+          type: string
+          format: date
+        fechaDevolucionReal:
+          type: string
+          format: date
+          nullable: true
+        estado:
+          type: string
+          enum: [activo, devuelto, vencido]
+    PrestamoInput:
+      type: object
+      required: [libroId, usuarioId, diasPrestamo]
+      properties:
+        libroId:
+          type: string
+        usuarioId:
+          type: string
+        diasPrestamo:
+          type: integer
+          minimum: 1
+          maximum: 30
+          default: 14
+    Error:
+      type: object
+      required: [codigo, mensaje]
+      properties:
+        codigo:
+          type: string
+          example: 'LIBRO_NO_DISPONIBLE'
+        mensaje:
+          type: string
+          example: 'El libro solicitado no tiene copias disponibles'
+        detalles:
+          type: array
+          items:
+            type: string
+
+  responses:
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            codigo: 'NOT_FOUND'
+            mensaje: 'El recurso solicitado no existe'
+    BadRequest:
+      description: Solicitud inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
